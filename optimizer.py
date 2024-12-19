@@ -8,11 +8,13 @@ from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.sampling.normal import SobolQMCNormalSampler
 from scipy.optimize import minimize
+from botorch.models.transforms.outcome import Standardize
+
 
 class BayesianOptimizer:
     def __init__(self, dimension=2):
         self.device = self.call_device()
-        self.dtype = torch.float32
+        self.dtype = torch.float64
         self.bounds = torch.tensor([[0.0] * dimension, [1.0] * dimension], device=self.device, dtype=self.dtype)
         self.observed_x = []
         self.D = []
@@ -70,21 +72,21 @@ class BayesianOptimizer:
     
     def initialize_model(self, train_x, train_y):
         # GP 모델 초기화
-        if isinstance(train_x, np.ndarray):
-            train_x = train_x.astype(np.float32)
-        if isinstance(train_y, np.ndarray):
-            train_y = train_y.astype(np.float32)
+        # if isinstance(train_x, np.ndarray):
+        #     train_x = train_x.astype(np.float32)
+        # if isinstance(train_y, np.ndarray):
+        #     train_y = train_y.astype(np.float32)
 
         
         norm_x = torch.tensor(train_x, dtype=self.dtype, device=self.device)
         norm_y = torch.tensor(train_y, dtype=self.dtype, device=self.device)
 
         norm_y = norm_y.unsqueeze(1)
-        self.model = SingleTaskGP(norm_x, norm_y, covar_module=ScaleKernel(MaternKernel(nu=2.5)))
-        self.model = self.model.to(dtype=torch.float32, device=self.device)
+        self.model = SingleTaskGP(norm_x, norm_y, covar_module=ScaleKernel(MaternKernel(nu=2.5)), outcome_transform=Standardize(m=1))
+        self.model = self.model.to(dtype=torch.float64, device=self.device)
         # MLL 초기화
         self.mll = ExactMarginalLogLikelihood(self.model.likelihood, self.model)
-        self.mll = self.mll.to(dtype=torch.float32, device=self.device)
+        self.mll = self.mll.to(dtype=torch.float64, device=self.device)
         # 모델 학습
         fit_gpytorch_mll(self.mll)
 
