@@ -21,7 +21,23 @@ def call_openai_api(system_prompt, user_prompt):
     
     except Exception as e:
         return {"error": f"Error: {str(e)}"}  # 에러 발생 시 딕셔너리 형태로 반환
-    
+def process_openai_response(raw_response):
+    try:
+        # JSON 문자열 추출
+        extracted_json_str = "\n".join(raw_response[1:-1])  # '```json'과 '```' 제외
+        print("Extracted JSON String:", extracted_json_str)
+
+        # 주석 제거 (// 이후 모든 텍스트 제거)
+        json_without_comments = re.sub(r"//.*", "", extracted_json_str)
+        print("JSON without comments:", json_without_comments)
+
+        # JSON 파싱
+        parsed_response = json.loads(json_without_comments)
+        return parsed_response
+
+    except json.JSONDecodeError as e:
+        print(f"Error occurred while decoding JSON: {e}")
+        return None
 optimizer = BayesianOptimizer(dimension=3)
 
 @app.route('/observe_user_behavior', methods=['POST'])
@@ -96,22 +112,9 @@ def suggest_colors_gpt():
         Current RGB: {current_rgb}
         """
         # user_prompt = "I want more pink color of this chair."
-        response = call_openai_api(system_prompt, user_prompt)
+        raw_response = call_openai_api(system_prompt, user_prompt)
 
-        # OpenAI API 응답 디버깅
-        print("OpenAI API raw response:", response)
-        
-        # JSON 데이터 추출
-        json_data_str = "\n".join(response[1:-1])  # "```json"과 "```" 제거
-        print("Extracted JSON String:", json_data_str)
-
-        # 문자열을 JSON으로 파싱
-        parsed_json = json.loads(json_data_str)
-        print("Parsed JSON:", parsed_json)
-
-        # 'suggested_rgb' 값 추출
-        suggested_rgb = parsed_json.get("suggested_rgb", None)
-        print("Suggested RGB:", suggested_rgb)
+        suggested_rgb = process_openai_response(raw_response)["suggested_rgb"]
         response_data = {
             "suggested_rgb": suggested_rgb
         }
