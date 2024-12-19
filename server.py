@@ -82,9 +82,11 @@ def suggest_colors_gpt():
         # 'suggested_rgb' 값 추출
         suggested_rgb = parsed_json.get("suggested_rgb", None)
         print("Suggested RGB:", suggested_rgb)
-
+        response_data = {
+            "suggested_rgb": suggested_rgb
+        }
         # 응답 반환
-        return jsonify(suggested_rgb), 200
+        return jsonify(response_data), 200
 
 
     except Exception as e:
